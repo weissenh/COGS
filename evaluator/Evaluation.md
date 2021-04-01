@@ -66,7 +66,17 @@ I propose to separate the framework used for building models (e.g. OpenNMT)
 from the evaluation code, such that one can evaluate their models prediction 
 without using OpenNMT. Furthermore, this allows us add more evaluation metrics as needed.
 
-**to do** implement this, mb `./scripts/score.py` ?
+**to do** implement this
+- `evaluator.py` contains Evaluator class and main function?
+- `metrics.py`  contains different metrics (e.g. ExactMatchAccuracy )
+- `readers.py` contains different readers (taking a file and returning a generator of CorpusInstance s)
+- `corpus_instance.py` class for one sample from the corpus, includes parsing the logical form
+
+**to do** how to call evaluator and get results (Python 3.7)
+```bash
+python3 evaluator.py --gold ../data/dev.tsv --system ../data/dev.tsv  # should give perfect results
+python3 evaluator.py --gold ./sampledata/gold1.tsv --system ./sampledata/system1.tsv
+```
 
 
 ## 4. References
