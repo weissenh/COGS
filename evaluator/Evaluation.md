@@ -5,6 +5,17 @@ author: [weissenh](https://github.com/weissenh) (Disclaimer: I'm not one of the 
 This should be a documentation of my efforts to evaluate models predictions on 
 COGS (independent of OpenNMT) along with some proposed additional evaluation metrics.
 
+Dependencies:
+- [LARK parser](https://github.com/lark-parser/lark) 
+  for parsing the logical forms. Parsing is needed to evaluate metrics like 
+  well-formedness and order-invariant exact match accuracy.
+  You can install it with pip:
+  `pip install lark-parser`
+  (Tested with version 0.11.2: `pip install lark-parser==0.11.2`)
+
+**to do** better parsing/grammar, other metrics, testing, ...
+
+
 Table of contents:
 1. What is reported in the COGS paper
 2. Extending evaluation beyond exact match accuracy
@@ -59,6 +70,24 @@ especially if we assume that the order of the conjuncts shouldn't affect the 'me
 - [ ] well-formedness
 - [ ] partial success?
 
+**Well-formedness.** For each logical form the sentence is either well-formed or not.
+Therefore we can count the samples for which the predicted logical form is well-formed.
+Well-formedness is determined by our parser which might not be optimal 
+(**todo improve parser**, see `cogs_logical_form.py`).
+Similar to exact match accuracy, we can compute and report the percentage of 
+samples/predictions that are considered 'correct' under this metric.
+
+**Order invariant exact match accuracy.** (OiEMAcc) 
+We consider predicted logical forms to be correct under this metric if 
+the predicted conjuncts and iotas (iotas still have to preceed the conjunction)
+can be reorderd such that we would have a strict exact match with the gold standard logical form.
+A model can obtain a perfect score here without having to learn the correct ordering of the conjuncts (or iotas).
+Obtaining the correct order of the conjuncts can easily be delegated to a 
+post-processing step. Moreover, it seems like the order wouldn't change the denotation 
+(logical conjunction is commutative and for iotas we don't consider scopes here).
+
+More to come...
+
 
 ## 3. OpenNMT-independent evaluation
 
@@ -70,7 +99,8 @@ without using OpenNMT. Furthermore, this allows us add more evaluation metrics a
 - `evaluator.py` contains Evaluator class and main function?
 - `metrics.py`  contains different metrics (e.g. ExactMatchAccuracy )
 - `readers.py` contains different readers (taking a file and returning a generator of CorpusInstance s)
-- `corpus_instance.py` class for one sample from the corpus, includes parsing the logical form
+- `corpus_instance.py` class for one sample from the corpus (sentence, logical form, required regeneralization type)
+- `cogs_logical_form.py` class for the logical form, including parsing into it **to do** improve parser
 
 **to do** how to call evaluator and get results (Python 3.7)
 ```bash

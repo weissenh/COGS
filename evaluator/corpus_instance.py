@@ -9,6 +9,7 @@ date: April 2020
 """
 
 # todo: implement, including parsing logical form
+from cogs_logical_form import COGSLogicalForm
 
 
 class CorpusInstance:
@@ -25,7 +26,7 @@ class CorpusInstance:
         self.logical_form_str = logical_form
         self.gen_type_required = gen_type_required
         self.line_number = line_num
-        # todo self.logical_form_parsed = self.__parse_logical_form()
+        self.logical_form_parsed = COGSLogicalForm(self.logical_form_str)
         self.sent_tokens = self.sent_str.split()
         self.sent_length = len(self.sent_tokens)
         return
@@ -36,8 +37,8 @@ class CorpusInstance:
             return False  # easy check first (int cmp faster than str compare)
         return self.sent_str == other_instance.sent_str
 
-    def __parse_logical_form(self):
-        raise NotImplementedError
+    def has_wellformed_lf(self) -> bool:
+        return self.logical_form_parsed.is_wellformed()
 
     def __str__(self):
         return "\t".join([self.sent_str,
@@ -55,7 +56,7 @@ def main():
         (
             "The boy wanted to go .",
             "* boy ( x _ 1 ) ; want . agent ( x _ 2 , x _ 1 )"
-            " AND want . xcomp( x _ 2 , x _ 4 )"
+            " AND want . xcomp ( x _ 2 , x _ 4 )"
             " AND go . agent ( x _ 4 , x _ 1 )",
             "in_distribution"
         ),

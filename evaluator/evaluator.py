@@ -27,7 +27,7 @@ import os
 import argparse
 
 from readers import CorpusInstance, get_samples_from_two_files
-from metrics import ExactMatchAccuracy
+from metrics import ExactMatchAccuracy, WellFormednessPercentage
 
 
 class Evaluator:
@@ -42,7 +42,7 @@ class Evaluator:
         self.gold_file = gold_file
         self.system_file = system_file
         self.num_seen_samples = 0
-        self.metrics = [ExactMatchAccuracy()]
+        self.metrics = [ExactMatchAccuracy(), WellFormednessPercentage()]
         # todo implement: read here or make it external?
 
     def update_counts(self, gold: CorpusInstance, system: CorpusInstance):
