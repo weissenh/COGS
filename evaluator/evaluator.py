@@ -17,7 +17,7 @@ Assumed input format:
 
 author: weissenh ( piaw@coli.uni-saarland.de )
 test environment: Ubuntu 20.04, Python 3.7
-date: April 2020
+date: April 2021
 """
 
 # todo: implement evaluation script
@@ -25,9 +25,11 @@ date: April 2020
 import sys  # for argc,argv and exit
 import os
 import argparse
+from tqdm import tqdm
 
 from readers import CorpusInstance, get_samples_from_two_files
-from metrics import ExactMatchAccuracy, WellFormednessPercentage
+from metrics import ExactMatchAccuracy, WellFormednessPercentage, \
+    OrderInvariantExactMatchAccuracy, TokenLevelEditDistance
 
 
 class Evaluator:
@@ -42,7 +44,12 @@ class Evaluator:
         self.gold_file = gold_file
         self.system_file = system_file
         self.num_seen_samples = 0
-        self.metrics = [ExactMatchAccuracy(), WellFormednessPercentage()]
+        self.metrics = [
+            ExactMatchAccuracy(),
+            WellFormednessPercentage(),
+            OrderInvariantExactMatchAccuracy(),
+            TokenLevelEditDistance()
+        ]
         # todo implement: read here or make it external?
 
     def update_counts(self, gold: CorpusInstance, system: CorpusInstance):
@@ -60,7 +67,10 @@ class Evaluator:
         print(f"System file: {self.system_file}")
         print(f"Seen instances: {self.num_seen_samples}")
         for metric in self.metrics:
-            print(f"{metric.get_name():<15} : {metric.get_score()*100:.2f} %")
+            if metric.get_name() == "Avg. token-level edit distance":
+                print(f"{metric.get_name():<40} : {metric.get_score():>6.2f}")
+                continue
+            print(f"{metric.get_name():<40} : {metric.get_score()*100:>6.2f} %")
         return
 
 
@@ -91,8 +101,9 @@ def main(argv):
 
     # todo what if files unequal length
     evaltr = Evaluator(gold_file=goldfile, system_file=systemfile)
-    for goldinst, systeminst in get_samples_from_two_files(goldfile=goldfile,
-                                                           systemfile=systemfile):
+    for goldinst, systeminst in tqdm(get_samples_from_two_files(
+            goldfile=goldfile, systemfile=systemfile),
+            desc="Iterating over samples "):
         evaltr.update_counts(gold=goldinst, system=systeminst)
 
     print("Start evaluating...")

@@ -6,14 +6,22 @@ This should be a documentation of my efforts to evaluate models predictions on
 COGS (independent of OpenNMT) along with some proposed additional evaluation metrics.
 
 Dependencies:
-- [LARK parser](https://github.com/lark-parser/lark) 
+- [LARK parser](https://github.com/lark-parser/lark)  
   for parsing the logical forms. Parsing is needed to evaluate metrics like 
-  well-formedness and order-invariant exact match accuracy.
-  You can install it with pip:
-  `pip install lark-parser`
+  well-formedness and order-invariant exact match accuracy.  
+  You can install it with pip: `pip install lark-parser`  
   (Tested with version 0.11.2: `pip install lark-parser==0.11.2`)
+- [tqdm](https://tqdm.github.io/)  
+  for the progress bar when calling `evaluator.py`.  
+  You can install it with pip: `pip install tqdm`  
+  (Tested with version 4.36.1)
+- [nltk](https://www.nltk.org/)  
+  for the Levenshtein distance (average token-level edit distance metric)  
+  You can install it with pip: `pip install nltk`  
+  (Tested with version 3.4.5)
 
 **to do** better parsing/grammar, other metrics, testing, ...
+**to do** faster parsing, currently takes nearly 30s to process for dev set
 
 
 Table of contents:
@@ -71,7 +79,7 @@ especially if we assume that the order of the conjuncts shouldn't affect the 'me
 - [ ] partial success?
 
 **Well-formedness.** For each logical form the sentence is either well-formed or not.
-Therefore we can count the samples for which the predicted logical form is well-formed.
+Therefore, we can count the samples for which the predicted logical form is well-formed.
 Well-formedness is determined by our parser which might not be optimal 
 (**todo improve parser**, see `cogs_logical_form.py`).
 Similar to exact match accuracy, we can compute and report the percentage of 
@@ -80,11 +88,16 @@ samples/predictions that are considered 'correct' under this metric.
 **Order invariant exact match accuracy.** (OiEMAcc) 
 We consider predicted logical forms to be correct under this metric if 
 the predicted conjuncts and iotas (iotas still have to preceed the conjunction)
-can be reorderd such that we would have a strict exact match with the gold standard logical form.
+can be reordered such that we would have a strict exact match with the gold standard logical form.
 A model can obtain a perfect score here without having to learn the correct ordering of the conjuncts (or iotas).
 Obtaining the correct order of the conjuncts can easily be delegated to a 
 post-processing step. Moreover, it seems like the order wouldn't change the denotation 
 (logical conjunction is commutative and for iotas we don't consider scopes here).
+
+**Average token-level edit distance.**
+Uses [Levenshtein Distance](https://en.wikipedia.org/wiki/Levenshtein_distance)
+to measure average token-level distance between gold and system logical form.  
+
 
 More to come...
 
@@ -93,13 +106,13 @@ More to come...
 
 I propose to separate the framework used for building models (e.g. OpenNMT)
 from the evaluation code, such that one can evaluate their models prediction 
-without using OpenNMT. Furthermore, this allows us add more evaluation metrics as needed.
+without using OpenNMT. Furthermore, this allows us to add more evaluation metrics as needed.
 
 **to do** implement this
 - `evaluator.py` contains Evaluator class and main function?
 - `metrics.py`  contains different metrics (e.g. ExactMatchAccuracy )
 - `readers.py` contains different readers (taking a file and returning a generator of CorpusInstance s)
-- `corpus_instance.py` class for one sample from the corpus (sentence, logical form, required regeneralization type)
+- `corpus_instance.py` class for one sample from the corpus (sentence, logical form, required generalization type)
 - `cogs_logical_form.py` class for the logical form, including parsing into it **to do** improve parser
 
 **to do** how to call evaluator and get results (Python 3.7)
