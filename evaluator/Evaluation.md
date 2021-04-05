@@ -1,4 +1,4 @@
-author: [weissenh](https://github.com/weissenh) (Disclaimer: I'm not one of the authors of the COGS paper!)
+author: [weissenh](https://github.com/weissenh) (Disclaimer: I'm **not** one of the authors of the COGS paper!)
 
 **this is work in progress**
 
@@ -20,8 +20,15 @@ Dependencies:
   You can install it with pip: `pip install nltk`  
   (Tested with version 3.4.5)
 
-**to do** better parsing/grammar, other metrics, testing, ...
-**to do** faster parsing, currently takes nearly 30s to process for dev set
+
+**TO DO**:
+- [ ] faster parsing (currently needs nearly 30secs for dev set, also: code smell)
+- [ ] stricter grammar? (see also `tests_lfgrammar`)
+- [ ] check and test new metrics (order-invariant ema, edit distance, ...)
+- [ ] more metrics
+- [ ] document usage
+- [ ] (enhancement) better/more readers
+- [ ] (enhancement) micro/macro level evaluation, print sentence-wise results
 
 
 Table of contents:
@@ -38,8 +45,9 @@ The COGS paper (Kim & Linzen [2020](https://www.aclweb.org/anthology/2020.emnlp-
 > An output sequence is considered correct only if it exactly matches the gold sequence. 
 > (p. 9092, caption of Figure 2(a))
 
-Additionally in appendix G2, p. 9102, they comment on 
-average token-level edit distance and ill-formedness.
+Additionally, in 
+[appendix G.2, p. 9102](https://www.aclweb.org/anthology/2020.emnlp-main.731.pdf#page=16), 
+they comment on average token-level edit distance and ill-formedness.
 
 **So main evaluation metric is exact match accuracy.**
 
@@ -57,55 +65,88 @@ the model's incorrect prediction are to the gold standard output.
 E.g. for the sentence *The boy wants to go* (made up example), 
 the correct logical form would be
 ```
-* boy ( x _ 1 ) ; want . agent ( x _ 2 , x _ 1 ) AND want . xcomp( x _ 2 , x _ 4 ) AND go . agent ( x _ 4 , x _ 1 )
+* boy ( x _ 1 ) ; want . agent ( x _ 2 , x _ 1 ) AND want . xcomp ( x _ 2 , x _ 4 ) AND go . agent ( x _ 4 , x _ 1 )
 ```
 The following forms are all considered equally 'bad' by the exact match accuracy,
 ranging from just conjuncts permuted, over only one token wrong, a conjunct missing, to completely off.
 ```
-* boy ( x _ 1 ) ; go . agent ( x _ 4 , x _ 1 ) AND want . xcomp( x _ 2 , x _ 4 ) AND want . agent ( x _ 2 , x _ 1 )
-* boy ( x _ 0 ) ; want . agent ( x _ 2 , x _ 1 ) AND want . xcomp( x _ 2 , x _ 4 ) AND go . agent ( x _ 4 , x _ 1 )
+* boy ( x _ 1 ) ; go . agent ( x _ 4 , x _ 1 ) AND want . xcomp ( x _ 2 , x _ 4 ) AND want . agent ( x _ 2 , x _ 1 )
+* boy ( x _ 0 ) ; want . agent ( x _ 2 , x _ 1 ) AND want . xcomp ( x _ 2 , x _ 4 ) AND go . agent ( x _ 4 , x _ 1 )
 * boy ( x _ 1 ) ; want . agent ( x _ 2 , x _ 1 ) AND go . agent ( x _ 4 , x _ 1 )
 girl ( x _ 1 ) AND go . agent ( x _ 2 , x _ 7 )
 ```
-In the above examples token-edit distance can help for some of the examples,
+In the above examples token-edit distance can help for some examples,
 but especially for the first (conjuncts permuted) this might overestimate the errors made,
 especially if we assume that the order of the conjuncts shouldn't affect the 'meaning' of the sentence.
 
 ### Proposed additions
 
+For the implementations of the metrics see `evaluator/metrics.py`  
 **to do**: additions
-- [ ] token-level edit distance (since it is reported in the paper, code from the authors?)
-- [ ] well-formedness
-- [ ] partial success?
+- [x] token-level edit distance (**todo** since it is reported in the paper, code from the authors?) (**todo: testing needed**)
+- [x] well-formedness 
+- [x] order-invariant exact match accuracy (**todo: testing needed**)
+- [ ] partial success? (predicate names, variables, ...)
 
-**Well-formedness.** For each logical form the sentence is either well-formed or not.
+**Well-formedness.** For each sentence the logical form is either well-formed or not.
 Therefore, we can count the samples for which the predicted logical form is well-formed.
 Well-formedness is determined by our parser which might not be optimal 
 (**todo improve parser**, see `cogs_logical_form.py`).
 Similar to exact match accuracy, we can compute and report the percentage of 
-samples/predictions that are considered 'correct' under this metric.
+samples/predictions that are considered 'correct' under this metric.  
+A prediction that is well-formed can still be incorrect, but  all gold standard 
+forms should be well-formed: a success in exact match implies well-formedness.  
+Note: in [appendix G.2 of the COGS paper, p. 9102](https://www.aclweb.org/anthology/2020.emnlp-main.731.pdf#page=16)
+the authors do mention ill-formedness with the example of missing a final 
+closing parenthesis in the Transformer output. However, according to p.c. with 
+the authors, they only evaluated well-formedness partially and didn't have an 
+overall metric for it.  
 
 **Order invariant exact match accuracy.** (OiEMAcc) 
-We consider predicted logical forms to be correct under this metric if 
-the predicted conjuncts and iotas (iotas still have to preceed the conjunction)
-can be reordered such that we would have a strict exact match with the gold standard logical form.
-A model can obtain a perfect score here without having to learn the correct ordering of the conjuncts (or iotas).
-Obtaining the correct order of the conjuncts can easily be delegated to a 
-post-processing step. Moreover, it seems like the order wouldn't change the denotation 
-(logical conjunction is commutative and for iotas we don't consider scopes here).
+*Background* The COGS logical form consists of a possibly empty list of prefix 
+terms (iotas or lambdas) and a conjunction with 1 or more conjuncts 
+(except for named entities as primitive).
+To have a deterministic order of conjuncts, the authors of COGS decided to order 
+them by subscript of the Skolem constants (see 
+[page 9099, appendix C](https://www.aclweb.org/anthology/2020.emnlp-main.731.pdf#page=13)).
+The order of the prefix terms **---to do---** order of prefix terms and scope.  
+As logical conjunction is commutative, the denotation should be invariant to the
+order of the conjuncts. Furthermore we believe that obtaining the correct order 
+of conjuncts and prefix terms can easily be delegated to a post-processing step.  
+We consider predicted logical forms to be correct under this metric if the 
+predicted conjuncts and prefix terms can be reordered such that we would have a 
+strict exact match with the gold standard logical form. However, we require that
+the iotas and lambdas in the original output precede the conjunction.
+For a named entity primitive, this metric trivially equals strict exact match.  
+A model can obtain a perfect score here without having to learn the correct 
+ordering of the conjuncts and prefix terms.
+Note that this metric, 
+just like well-formedness but unlike the (strict) exact match accuracy, 
+depends on the grammar used. Further note that if the prediction is not 
+well-formed we consider the OiEMAcc to be 0.
 
 **Average token-level edit distance.**
 Uses [Levenshtein Distance](https://en.wikipedia.org/wiki/Levenshtein_distance)
-to measure average token-level distance between gold and system logical form.  
+to measure average token-level edit distance between gold and system logical form.
+We use NLTK to calculate it and use the standard version where substitution cost 
+is 1 and transposition is  not among the atomic operations.  
+Distances are non-negative, and lower distances are considered better: 
+a distance of 0 is equivalent to a (strict) exact match, i.e. the prediction is 
+equal to the gold standard form.
 
 
 More to come...
+
+*Possible future extensions*:  
+- precision/recall/F1 for skolem constants like `x_1` (and maybe proper names, lambda vars too?) (prefix and conjunction seprate or overall?)
+- precision/recall/F1 for predicate names like `eat.agent` and `cat` (prefix and conjunction seprate or overall?)
+- precision/recall/F1 for correct terms like `cat(x_1)` or `eat.agent(x_2,x_1)` (prefix and conjunction seprate or overall?)
 
 
 ## 3. OpenNMT-independent evaluation
 
 I propose to separate the framework used for building models (e.g. OpenNMT)
-from the evaluation code, such that one can evaluate their models prediction 
+from the evaluation code, such that one can evaluate their models' predictions 
 without using OpenNMT. Furthermore, this allows us to add more evaluation metrics as needed.
 
 **to do** implement this
@@ -152,3 +193,9 @@ Regarding graph-based meaning representations:
   [code](https://github.com/semantic-dependency-parsing/toolkit) on github)
 - [MRP](http://mrp.nlpl.eu/2020/index.php) uses [mtool](https://github.com/cfmrp/mtool) (**todo cite?**): MRP score
 
+Out of curiosity: because we treat semantic parsing as a seq2seq task here,
+just like MT, what would traditional MT evaluation metrics,
+e.g. [BLEU](https://en.wikipedia.org/wiki/BLEU) 
+([Papineni et al. 2002](https://www.aclweb.org/anthology/P02-1040/)) and its
+proposed successors/alternations,
+tell us?
