@@ -28,7 +28,10 @@ Dependencies:
 - [ ] more metrics
 - [ ] document usage
 - [ ] (enhancement) better/more readers
-- [ ] (enhancement) micro/macro level evaluation, print sentence-wise results
+- [ ] (enhancement) micro/macro level evaluation
+- [ ] add option to specify output file for evaluation results (instead of stdout)
+- [x] print sentence-wise results (actually use verbosity parameter!)
+- [ ] summarize evaluation for each 3rd row type (`ìn_distribution`, `prim_to_obj_proper`, ...)
 
 
 Table of contents:
@@ -160,6 +163,19 @@ without using OpenNMT. Furthermore, this allows us to add more evaluation metric
 ```bash
 python3 evaluator.py --gold ../data/dev.tsv --system ../data/dev.tsv  # should give perfect results
 python3 evaluator.py --gold ./sampledata/gold1.tsv --system ./sampledata/system1.tsv
+```
+
+```
+python3 evaluator.py --gold ./sampledata/gold3.tsv --system ./sampledata/system3.tsv
+Iterating over samples : 10it [00:00, 147.70it/s]
+Full corpus evaluation:
+Gold file:   ./sampledata/gold3.tsv
+System file: ./sampledata/system3.tsv
+Seen instances: 10
+Exact match accuracy                     :  10.00 %
+Well-formedness percentage               :  90.00 %
+Order-invariant Exact match accuracy     :  20.00 %
+Avg. token-level edit distance           :   9.30
 ```
 
 
