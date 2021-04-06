@@ -3,9 +3,9 @@
 """
 (Main function used for testing/showing small demo)
 
-author: weissenh ( piaw@coli.uni-saarland.de )
+author: weissenh
 test environment: Ubuntu 20.04, Python 3.7
-date: April 2020
+date: April 2021
 """
 
 # todo: implement, including parsing logical form

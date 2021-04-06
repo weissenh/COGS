@@ -10,7 +10,7 @@ logical form. You can use pip to install it:
     pip install lark-parser
 Tested with lark-parser-0.11.2  (`pip install lark-parser==0.11.2`)
 
-author: weissenh ( piaw@coli.uni-saarland.de )
+author: weissenh
 test environment: Ubuntu 20.04, Python 3.7
 date: April 2021
 """
