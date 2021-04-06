@@ -15,12 +15,14 @@ Assumed input format:
   i.e. the input sentences (first column) need to match, otherwise that line is
   ignored.
 
-author: weissenh ( piaw@coli.uni-saarland.de )
+author: weissenh
 test environment: Ubuntu 20.04, Python 3.7
 date: April 2021
 """
 
-# todo: implement evaluation script
+# todo: add option to specify output file
+# todo: summarize evaluation results for each 3rd row type (in_distrib, ...)
+# todo: (maybe) let evaluator get list of metrics at initialization?
 
 import sys  # for argc,argv and exit
 import os
@@ -40,9 +42,10 @@ class Evaluator:
     can print evaluation metric results on the full dataset.
     """
 
-    def __init__(self, gold_file: str, system_file: str):
+    def __init__(self, gold_file: str, system_file: str, verbose=False):
         self.gold_file = gold_file
         self.system_file = system_file
+        self.verbose = verbose
         self.num_seen_samples = 0
         self.metrics = [
             ExactMatchAccuracy(),
@@ -50,19 +53,37 @@ class Evaluator:
             OrderInvariantExactMatchAccuracy(),
             TokenLevelEditDistance()
         ]
+        if self.verbose:
+            print("Sentence wise evaluation results")
+            self.print_sentence_evaluation_header()
         # todo implement: read here or make it external?
 
     def update_counts(self, gold: CorpusInstance, system: CorpusInstance):
         # if sentence don't match, meaningless comparison:
         assert(gold.is_same_sentence(system))
         self.num_seen_samples += 1  # todo what if duplicate?
+        sent_scores = list()
         for metric in self.metrics:
-            metric.update(gold=gold, system=system)
+            sent_score = metric.update(gold=gold, system=system)
+            if self.verbose:
+                sent_scores.append(sent_score)
+        if self.verbose:
+            self.print_sentence_evaluation(sent_scores, gold.logical_form_str,
+                                           system.logical_form_str)
         return
 
-    def print_results(self):
-        # todo implement
-        print("TODO: implement print results for evaluator")
+    def print_sentence_evaluation_header(self) -> None:
+        print("\t".join([f"{m.get_abbreviation():<6}" for m in self.metrics] +
+                        ["System logical form", "Gold logical form"]))
+
+    def print_sentence_evaluation(self, sent_scores: list,
+                                  goldlf: str, syslf: str) -> None:
+        # keep this parallel to header printed (see method above)
+        # watch out: system LF printed before gold
+        print("\t".join([f"{s:>6.2f}" for s in sent_scores]+[syslf, goldlf]))
+
+    def print_overall_results(self) -> None:
+        """Print evaluation results based on the whole corpus seen so far"""
         print(f"Gold file:   {self.gold_file}")
         print(f"System file: {self.system_file}")
         print(f"Seen instances: {self.num_seen_samples}")
@@ -100,15 +121,14 @@ def main(argv):
             raise FileNotFoundError(f"Input file {inputfile} doesn't exist!")
 
     # todo what if files unequal length
-    evaltr = Evaluator(gold_file=goldfile, system_file=systemfile)
+    evaltr = Evaluator(gold_file=goldfile, system_file=systemfile, verbose=args.verbose)
     for goldinst, systeminst in tqdm(get_samples_from_two_files(
             goldfile=goldfile, systemfile=systemfile),
-            desc="Iterating over samples "):
+            desc="Iterating over samples "):  # , file=sys.__stdout__
         evaltr.update_counts(gold=goldinst, system=systeminst)
 
-    print("Start evaluating...")
-    # todo implement here
-    evaltr.print_results()
+    print("Full corpus evaluation:")
+    evaltr.print_overall_results()
     return
 
 
