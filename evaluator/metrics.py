@@ -7,7 +7,7 @@ Different evaluation metrics comparing to corpus instances
 - WellFormednessPercentage
 - TokenLevelEditDistance
 
-author: weissenh ( piaw@coli.uni-saarland.de )
+author: weissenh
 test environment: Ubuntu 20.04, Python 3.7
 date: April 2021
 """
@@ -29,17 +29,26 @@ from corpus_instance import CorpusInstance
 class Metric:
     """Superclass for metrics"""
 
-    def __init__(self):
+    def __init__(self, name: str, abbreviation: str):
         self.total = 0
         self.good = 0
+        self.name = name
+        self.abbreviation = abbreviation
 
     def get_name(self) -> str:
+        """Get full name for metric"""
+        return self.name
+
+    def get_abbreviation(self) -> str:
+        """Get abbreviated name for metric (should be ideally <=6 chars long)"""
+        return self.abbreviation
+
+    def update(self, gold: CorpusInstance, system: CorpusInstance) -> float:
+        """Updates internal counts, returns sentence score"""
         raise NotImplementedError()
 
-    def update(self, gold: CorpusInstance, system: CorpusInstance):
-        raise NotImplementedError()
-
-    def get_score(self):
+    def get_score(self) -> float:
+        """:returns overall metric score"""
         # as [0, 1], multiply by 100 to get percentage
         if self.total == 0:
             return 0.0
@@ -50,17 +59,16 @@ class ExactMatchAccuracy(Metric):
     """Exact match accuracy: prediction must exactly match gold logical form"""
 
     def __init__(self):
-        super(ExactMatchAccuracy, self).__init__()
+        super(ExactMatchAccuracy, self).__init__(
+            name="Exact match accuracy",
+            abbreviation="EMAcc")
 
     @overrides
-    def get_name(self) -> str:
-        return "Exact match accuracy"
-
-    @overrides
-    def update(self, gold: CorpusInstance, system: CorpusInstance):
+    def update(self, gold: CorpusInstance, system: CorpusInstance) -> float:
         self.total += 1
-        self.good += int(gold.logical_form_str == system.logical_form_str)
-        return
+        sentence_score = int(gold.logical_form_str == system.logical_form_str)
+        self.good += sentence_score
+        return sentence_score
 
 
 class OrderInvariantExactMatchAccuracy(Metric):
@@ -73,27 +81,27 @@ class OrderInvariantExactMatchAccuracy(Metric):
     """
 
     def __init__(self):
-        super(OrderInvariantExactMatchAccuracy, self).__init__()
+        super(OrderInvariantExactMatchAccuracy, self).__init__(
+            name="Order-invariant Exact match accuracy",
+            abbreviation="OiEMAcc")
 
     @overrides
-    def get_name(self) -> str:
-        return "Order-invariant Exact match accuracy"
-
-    @overrides
-    def update(self, gold: CorpusInstance, system: CorpusInstance):
+    def update(self, gold: CorpusInstance, system: CorpusInstance) -> float:
         self.total += 1
         # todo revise this ugly code
         assert(gold.has_wellformed_lf())
         if not system.has_wellformed_lf():
-            return  # can't equal gold LF anyway if it's not wellformed
+            return 0.0  # can't equal gold LF anyway if it's not wellformed
         goldlf = gold.logical_form_parsed  # datattype: COGSLogicalForm
         systemlf = system.logical_form_parsed  # datatype: COGSLogicalForm
         goldtype = goldlf.type_of_formula()
         if goldtype != systemlf.type_of_formula():
-            return  # can't equal gold LF anyway if not same type of forumla
+            return 0.0  # can't equal gold LF anyway if not same type of forumla
         # 'iotas', 'lambdas', 'name'
         if goldtype == "name":
-            return int(goldlf.get_name() == systemlf.get_name())
+            sent_score = int(goldlf.get_name() == systemlf.get_name())
+            self.good += sent_score
+            return sent_score
         # g_prefix, s_prefix = set(), set()
         if goldtype == 'iotas':
             g_prefix = set(goldlf.get_iotas())
@@ -107,8 +115,9 @@ class OrderInvariantExactMatchAccuracy(Metric):
         s_conj = set(systemlf.get_conjuncts())
         prefix_same = g_prefix == s_prefix
         conjuncts_same = g_conj == s_conj
-        self.good += int(prefix_same and conjuncts_same)
-        return
+        sent_score = int(prefix_same and conjuncts_same)
+        self.good += sent_score
+        return sent_score
 
 
 class WellFormednessPercentage(Metric):
@@ -120,21 +129,21 @@ class WellFormednessPercentage(Metric):
     """
 
     def __init__(self):
-        super(WellFormednessPercentage, self).__init__()
+        super(WellFormednessPercentage, self).__init__(
+            name="Well-formedness percentage",
+            abbreviation="Wellfm"
+        )
 
     @overrides
-    def get_name(self) -> str:
-        return "Well-formedness percentage"
-
-    @overrides
-    def update(self, gold: CorpusInstance, system: CorpusInstance):
+    def update(self, gold: CorpusInstance, system: CorpusInstance) -> float:
         self.total += 1
         assert(gold.has_wellformed_lf())
         # if not system.has_wellformed_lf():
         #    print("Not wellformed: ", system)
         # self.good += int(system.has_wellformed_lf())  # short version
-        self.good += 1 if system.has_wellformed_lf() else 0
-        return
+        sent_score = 1 if system.has_wellformed_lf() else 0
+        self.good += sent_score
+        return sent_score
 
 
 # maybe use nltk:
@@ -149,14 +158,13 @@ class TokenLevelEditDistance(Metric):
     Given the tokens
     """
     def __init__(self):
-        super(TokenLevelEditDistance, self).__init__()
+        super(TokenLevelEditDistance, self).__init__(
+            name="Avg. token-level edit distance",
+            abbreviation="TEditD"
+        )
 
     @overrides
-    def get_name(self) -> str:
-        return "Avg. token-level edit distance"
-
-    @overrides
-    def update(self, gold: CorpusInstance, system: CorpusInstance):
+    def update(self, gold: CorpusInstance, system: CorpusInstance) -> float:
         self.total += 1
         # self.good += int(gold.logical_form_str == system.logical_form_str)
         distance = edit_distance(s1=gold.logical_form_parsed.tokens,
@@ -164,4 +172,4 @@ class TokenLevelEditDistance(Metric):
                                  substitution_cost=1, transpositions=False)
         self.good += distance
         # raise NotImplementedError("Not yet implemented")
-        return
+        return distance
