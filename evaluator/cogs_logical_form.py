@@ -156,7 +156,7 @@ class IllFormedLogicalForm(ValueError):
     pass
 
 
-# todo: not only read but also build logical forms on the go?
+# todo: add more functions? retrieving indices, ...
 class COGSLogicalForm:
     """
     Parsed logical form of COGS (note: system predictions can be illformed!)
@@ -195,17 +195,17 @@ class COGSLogicalForm:
         assert(len(found) == 1)
         return found[0]
 
-    def get_conjuncts(self) -> set:
+    def get_conjuncts(self) -> list:
         if not self.is_wellformed():
             raise IllFormedLogicalForm()
         return self.parsed.get("conjunction", [])
 
-    def get_iotas(self) -> set:
+    def get_iotas(self) -> list:
         if not self.is_wellformed():
             raise IllFormedLogicalForm()
         return self.parsed.get("iotas", [])
 
-    def get_lambdas(self) -> set:
+    def get_lambdas(self) -> list:
         if not self.is_wellformed():
             raise IllFormedLogicalForm()
         return self.parsed.get("lambdas", [])
@@ -213,7 +213,41 @@ class COGSLogicalForm:
     def get_name(self) -> str:
         if not self.is_wellformed():
             raise IllFormedLogicalForm()
-        return self.parsed.get("name", [])
+        return self.parsed.get("name", "")
+
+    def get_terms(self) -> list:
+        type = self.type_of_formula()
+        if type == "name":
+            return [self.get_name()]
+        conjuncts = self.get_conjuncts()
+        if type == "iotas":
+            prefix_terms = self.get_iotas()
+            return prefix_terms + conjuncts
+        elif type == "lambdas":
+            return conjuncts  # lambda doesn't have terms in the prefix
+        else:  # above list assumed to be exhaustive
+            assert (False)  # this shouldn't happen
+
+    def get_predicate_names(self) -> list:  # contains e.g. ('eat', 'theme')
+        type = self.type_of_formula()
+        if type == "name":
+            return []
+        terms = self.get_terms()
+        preds = list()
+        for term in terms:  # datatype: Term   field_names=["pred", "args"]
+            preds.append(term.pred)
+        return preds
+
+    def get_arguments(self) -> list:  # flat list contains e.g. 1, 'Emma', 1
+        type = self.type_of_formula()
+        if type == "name":
+            return []
+        # todo should we exclude lambda var part? are primitive names arguments?
+        terms = self.get_terms()
+        arguments = list()
+        for term in terms:  # datatype: Term   field_names=["pred", "args"]
+            arguments.extend(list(term.args))
+        return arguments
 
 
 def debugging_main():
@@ -265,6 +299,9 @@ def main():
             print(f"Logical form: Iotas: {lform.get_iotas()}")
             print(f"Logical form: Lambdas: {lform.get_lambdas()}")
             print(f"Logical form: Conjuncts: {lform.get_conjuncts()}")
+            print(f"Logical form: Terms: {lform.get_terms()}")
+            print(f"Logical form: Predicate names: {lform.get_predicate_names()}")
+            print(f"Logical form: Arguments: {lform.get_arguments()}")
             print(f"#tokens: {len(lform.tokens)}")
         except IllFormedLogicalForm:
             print("(ill-formed, therefore can't print more details)")
